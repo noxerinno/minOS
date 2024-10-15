@@ -1,0 +1,2 @@
+# MinOS
+Minimalist operating system
