@@ -8,12 +8,37 @@ _start:
     mov ds, ax
     call clear_screen       ; Call the function to clear the screen
     
-    mov dl, 33              ; Heigth offset to center "Hello, World!" (80x25 display)
-    mov dh, 12              ; Heigth offset to center "Hello, World!" (80x25 display)
+    mov dl, 25              ; Heigth offset to center the logo (80x25 display)
+    mov dh, 9               ; Heigth offset to center the logo (80x25 display)
     call set_cursor         ; Call the functioon to set the cursor at the right offset
-
-    mov si, my_string       ; Load the address of 'my_string' into bx
+    mov si, logo_line1      ; Load the address of 'my_string' into bx
     call print_screen       ; Call the function to print the string
+    
+    mov dh, 10
+    call set_cursor
+    mov si, logo_line2
+    call print_screen
+
+    mov dh, 11
+    call set_cursor
+    mov si, logo_line3
+    call print_screen
+
+    mov dh, 12
+    call set_cursor
+    mov si, logo_line4
+    call print_screen
+
+
+    mov dh, 13
+    call set_cursor
+    mov si, logo_line5
+    call print_screen
+
+    mov dh, 14
+    call set_cursor
+    mov si, logo_line6
+    call print_screen
 
     jmp $                   ; Infinite loop to stay in the bootloader
 
@@ -23,18 +48,17 @@ clear_screen:
     mov bh, 0x07            ; Write in white on black background
     mov cx, 0x0000          ; Upper left screen coordinate
     mov dx, 0x184F          ; Lower right screen coordinate
-    int 0x10
+    int 0x10                ; Make the BIOS interrupt call to print the character
     jmp done
 
 set_cursor:                 ; Position cursor to center print
     mov ah, 0x02            ; BIOS teletype function (0x06) for placing the cursor
     mov bh, 0x00
-    int 0x10
+    int 0x10                ; Make the BIOS interrupt call to print the character
     jmp done
 
 print_screen:
     mov al, [si]            ; Load the character pointed to by bx into al
-    ; lodsb
 
     cmp al, 0               ; Check if the character is the null terminator (end of string)
     je done                 ; If it's null (0), jump to 'done'
@@ -49,60 +73,15 @@ done:
     ret                     ; Return from the function when the string ends
 
 
-my_string db "Hello, World!", 0  ; Null-terminated string
+; my_string db "Hello, World!", 0  ; Null-terminated string
+logo_line1 db " __  __ _        ____   _____", 0  ; Null-terminated string
+logo_line2 db "|  \/  (_)      / __ \ / ____|", 0  
+logo_line3 db "| \  / |_ _ __ | |  | | (___", 0  
+logo_line4 db "| |\/| | | '_ \| |  | |\___ \", 0
+logo_line5 db "| |  | | | | | | |__| |____) |", 0
+logo_line6 db "|_|  |_|_|_| |_|\____/|_____/", 0
+
+
 
 times 510-($-$$) db 0       ; Fill empty space with '0'
 bootSignature dw 0xAA55     ; Write boot signature at the end of the boot sector
-
-
-    ; mov ah, 0x0E            ; Display 'H'
-    ; mov al, 'H'
-    ; int 0x10
-    ; 
-    ; mov ah, 0x0E            ; Display 'e'
-    ; mov al, 'e'
-    ; int 0x10
-    ; 
-    ; mov ah, 0x0E            ; Display 'l'
-    ; mov al, 'l'
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display 'l'
-    ; mov al, 'l'
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display 'o'
-    ; mov al, 'o'
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display ','
-    ; mov al, ','
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display ' '
-    ; mov al, ' '
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display 'W'
-    ; mov al, 'W'
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display 'o'
-    ; mov al, 'o'
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display 'r'
-    ; mov al, 'r'
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display 'l'
-    ; mov al, 'l'
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display 'd'
-    ; mov al, 'd'
-    ; int 0x10
-    ;
-    ; mov ah, 0x0E            ; Display '!'
-    ; mov al, '!'
-    ; int 0x10 
