@@ -13,8 +13,8 @@ boot: binaries
 
 binaries: clean create_bin_directory
 	@ nasm -f bin -o ./src/bin/bootloader.bin ./src/bootloader.asm
-	@ nasm -f elf32 -o ./src/bin/bootloader.o ./src/bootloader.asm
-	@ ld -m elf_i386 -o ./src/bin/bootloader.elf ./src/bin/bootloader.o
+	@ # nasm -f elf32 -o ./src/bin/bootloader.o ./src/bootloader.asm
+	@ # ld -m elf_i386 -o ./src/bin/bootloader.elf ./src/bin/bootloader.o
 	@ echo "${GREEN}Bootloader: ${NO_COLOR}bootloader binaries successfully created"
 
 create_bin_directory:
