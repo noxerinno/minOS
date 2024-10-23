@@ -30,7 +30,6 @@ _start:
     mov si, logo_line4
     call print_screen
 
-
     mov dh, 13              ; Displaying logo's fifth line
     call set_cursor
     mov si, logo_line5
