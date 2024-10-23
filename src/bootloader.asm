@@ -1,3 +1,4 @@
+[BITS 16]
 org 0x0000                  ; Offset from load address
 
 section .text
@@ -14,33 +15,71 @@ _start:
     mov si, logo_line1      ; Load the address of 'my_string' into bx
     call print_screen       ; Call the function to print the string
     
-    mov dh, 10
+    mov dh, 10              ; Displaying logo's second line
     call set_cursor
     mov si, logo_line2
     call print_screen
 
-    mov dh, 11
+    mov dh, 11              ; Displaying logo's third line
     call set_cursor
     mov si, logo_line3
     call print_screen
 
-    mov dh, 12
+    mov dh, 12              ; Displaying logo's fourth line
     call set_cursor
     mov si, logo_line4
     call print_screen
 
 
-    mov dh, 13
+    mov dh, 13              ; Displaying logo's fifth line
     call set_cursor
     mov si, logo_line5
     call print_screen
 
-    mov dh, 14
+    mov dh, 14              ; Displaying logo's sixth line
     call set_cursor
     mov si, logo_line6
     call print_screen
 
-    jmp $                   ; Infinite loop to stay in the bootloader
+    call sleep_5_seconds
+    call clear_screen
+
+    ; Preparing swith to protected mode
+    ; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
+    gdt_start:              ; Required null descriptor
+        dw 0x0
+        dw 0x0
+    
+    gdt_data:               ; Data semgment
+        dw 0xffff           ; Span over whole available space
+        dw 0x0
+        db 0x0
+        db 10010010b        ; Readable, writable but not executable
+        db 11001111b
+        db 0x0
+    
+    gdt_code:               ; Code segment
+        dw 0xffff           ; Span over whole available space
+        dw 0x0
+        db 0x0
+        db 10011010b        ; Readable, executable but not writable
+        db 11001111b
+        db 0x0
+    
+    gdt_end:    
+    
+    gdt_descriptor:
+        dw gdt_end - gdt_start - 1
+        dw gdt_start
+    
+    cli                     ; Disable BIOS interrupts
+    lgdt[gdt_descriptor]    ; Load the GDT
+
+    mov eax, cr0            ; Load control register 0 (CR0)
+    or al, 1                ; Set the PE (Protection Enable) bit
+    mov cr0, eax            ; Write back to CR0 to enable protected mode
+
+    jmp protected_mode
 
 clear_screen:
     mov ah, 0x06            ; BIOS teletype function (0x06) for clearing the screen  
@@ -67,13 +106,34 @@ print_screen:
     int 0x10                ; Make the BIOS interrupt call to print the character
 
     add si, 1               ; Increment bx to point to the next character
-    jmp print_screen        ; Repeat for the next character
+    jmp print_screen        ; Repeat for the next character 
+
+; Qemu doesn't seem to correctly use int 0x15, func 0x86
+;sleep_5_seconds:
+;    mov cx, 0               ; Set CX (high word of the delay) to 0, as our delay is less than 65536 ms
+;    mov dx, 5000            ; Set DX (low word of the delay) to 5000 milliseconds (5 seconds)
+;    
+;    mov ah, 0x86            ; BIOS interrupt function 0x86 for waiting (delay)
+;    int 0x15                ; Call BIOS interrupt 0x15 to perform the delay 
+;    jmp done
+
+; Custom 'sleep' function
+sleep_5_seconds:
+    mov cx, 0x4FFF          ; Outer loop counter
+outer_loop:
+    mov dx, 0xFFFF          ; Inner loop counter
+inner_loop:
+    dec dx                  ; Decrement inner loop counter
+    jnz inner_loop          ; If DX != 0, repeat inner loop
+    
+    dec cx                  ; Decrement outer loop counter
+    jnz outer_loop          ; If CX != 0, repeat outer loop
+    
+    jmp done
 
 done:
     ret                     ; Return from the function when the string ends
 
-
-; my_string db "Hello, World!", 0  ; Null-terminated string
 logo_line1 db " __  __ _        ____   _____", 0  ; Null-terminated string
 logo_line2 db "|  \/  (_)      / __ \ / ____|", 0  
 logo_line3 db "| \  / |_ _ __ | |  | | (___", 0  
@@ -81,6 +141,12 @@ logo_line4 db "| |\/| | | '_ \| |  | |\___ \", 0
 logo_line5 db "| |  | | | | | | |__| |____) |", 0
 logo_line6 db "|_|  |_|_|_| |_|\____/|_____/", 0
 
+
+
+[BITS 32]                   ; Beginning of protected mode
+
+protected_mode:
+    jmp $                   ; Infinite loop to stay in the bootloader
 
 
 times 510-($-$$) db 0       ; Fill empty space with '0'
