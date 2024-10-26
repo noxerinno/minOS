@@ -1,8 +1,9 @@
 [BITS 16]
-org 0x0000                  ; Offset from load address
 
 section .text
 global _start
+
+BOOT_DRIVE db 0x00
 
 _start:
     mov ax, 0x07C0          ; Load bootloader load address in AX (0x7C0:0000 = 0x7C00)
@@ -43,6 +44,8 @@ _start:
     call sleep_5_seconds
     call clear_screen
 
+    jmp $                   ; Infinite loop to stay in the bootloader
+
     ; Preparing swith to protected mode
     ; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
     gdt_start:              ; Required null descriptor
@@ -71,14 +74,25 @@ _start:
         dw gdt_end - gdt_start - 1
         dw gdt_start
     
+    ;;  Kernel loading
+    ;mov bx, 0x1000          ; Load OS source code in memory at address 0x1000
+    ;mov dh, 16              ; Laod 16 disk sectors
+    ;mov dl, [BOOT_DRIVE]    ; Load from booting disk
+    ;mov ah, 0x02            ; BIOS function to load disk
+    ;mov al, dh              ; Provide the number of sector to load to the BIOS function
+    ;mov cl, 0x02            ; Read from sector 2,...
+    ;mov ch, 0x00            ; ...from cylinder 0...
+    ;mov dh, 0x00            ; ...and from head 0
+    ;int 0x13                ; Call to the BIOS interrupt to pass kernel's main func
+    
     cli                     ; Disable BIOS interrupts
     lgdt[gdt_descriptor]    ; Load the GDT
-
+    
     mov eax, cr0            ; Load control register 0 (CR0)
     or al, 1                ; Set the PE (Protection Enable) bit
     mov cr0, eax            ; Write back to CR0 to enable protected mode
-
-    jmp protected_mode
+    
+    jmp 0x08:protected_start; Long jump
 
 clear_screen:
     mov ah, 0x06            ; BIOS teletype function (0x06) for clearing the screen  
@@ -141,11 +155,15 @@ logo_line5 db "| |  | | | | | | |__| |____) |", 0
 logo_line6 db "|_|  |_|_|_| |_|\____/|_____/", 0
 
 
+protected_start:
+    ;mov ax, 0x10            ; Selecting data segments
+    ;mov ds, ax              ; Loading data segments
+    ;mov es, ax
+    ;mov fs, ax
+    ;mov gs, ax
+    ;mov ss, ax              ; Loading stack data
 
-[BITS 32]                   ; Beginning of protected mode
-
-protected_mode:
-    jmp $                   ; Infinite loop to stay in the bootloader
+    jmp 0x08:0x1000         ; Long jump to kernel
 
 
 times 510-($-$$) db 0       ; Fill empty space with '0'
