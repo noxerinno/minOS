@@ -1,6 +1,6 @@
 # Defining cross-compiler vars
-CROSS_PREFIX=/opt/cross/i686-elf
 CROSS_TARGET=i686-elf
+CROSS_PREFIX=/opt/cross/$(CROSS_TARGET)
 
 # Defining global vars
 SRC_DIR = ./src
@@ -40,8 +40,7 @@ boot: disk_image
 	@ #qemu-system-x86_64 -machine type=pc-i440fx-3.1 -m 512M -drive format=raw,file=$(BOOTLOADER_BIN_TARGET)
 	@ #qemu-system-x86_64 -machine type=pc-i440fx-3.1 -m 512M -drive format=raw,file=$(OS_ELF_TARGET)
 	@ #qemu-system-x86_64 -drive format=raw,file=$(OS_DISK_TARGET)
-	@ qemu-system-i386 -drive format=raw,file=$(OS_DISK_TARGET)
-
+	@ qemu-system-i386 -drive format=raw,file=$(OS_DISK_TARGET) 
 
 debug: boot elf_reports
 	@ chmod u+x $(DEBUG_SCRIPT)
@@ -53,21 +52,25 @@ debug: boot elf_reports
 # 	@ echo "${GREEN}Disk image: ${NO_COLOR}Disk image successfully created at $(OS_DISK_TARGET)"
 
 disk_image: binaries create_disk_image_dir
-	@ dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880
-	@ dd if=$(BOOTLOADER_BIN_TARGET) of=$(OS_DISK_TARGET) conv=notrunc
-	@ dd if=$(KERNEL_TARGET) of=$(OS_DISK_TARGET) bs=512 seek=1 conv=notrunc
+	 dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880 $(NO_PROMPT)
+	 #parted ./src/image/minOS.img --script -- unit s mklabel msdos
+	 #parted ./src/image/minOS.img --script -- unit s mkpart primary 2048 2879
+	 dd if=$(BOOTLOADER_BIN_TARGET) of=$(OS_DISK_TARGET) conv=notrunc $(NO_PROMPT)
+	 dd if=$(OS_ELF_TARGET) of=$(OS_DISK_TARGET) bs=512 seek=1 conv=notrunc $(NO_PROMPT)
 	@ echo "${GREEN}Disk image: ${NO_COLOR}Disk image successfully created at $(OS_DISK_TARGET)"
 
 binaries: clean_bin create_bin_dir
 	@ if [ ! -d $(CROSS_PREFIX) ]; then \
-		echo "${RED}Binaries: ${NO_COLOR}Cross compiler not found in \"$(CROSS_PREFIX)\"\n\t  To install the i386-elf cross compiler, run the following commands :\n\t\tsudo make cross-compiler &&\n\t\tcd $(BUILD_BINUTILS_DIR) && sudo ./binutils-config.sh && cd - &&\n\t\tcd $(BUILD_GCC_DIR) && sudo ./gcc-config.sh && cd -"; \
+		echo "${RED}Binaries: ${NO_COLOR}Cross compiler not found in \"$(CROSS_PREFIX)\"\n\t  To install the i386-elf cross compiler, run the following commands :\n\t\tsudo make cross-compiler &&\n\t\tcd $(BUILD_BINUTILS_DIR) && sudo ./binutils-config.sh $(CROSS_TARGET) && cd - &&\n\t\tcd $(BUILD_GCC_DIR) && sudo ./gcc-config.sh $(CROSS_TARGET) && cd -"; \
 		exit 1; \
 	fi
 
 	@ nasm -f bin -o $(BOOTLOADER_BIN_TARGET) $(BOOTLOADER_SRC)
 	@ nasm -f elf32 -o $(BOOTLOADER_ELF_TARGET) $(BOOTLOADER_SRC)
 	@ $(CC) $(CFLAGS) -o $(KERNEL_TARGET) -c $(KERNEL_SRC)
-	@ $(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_ELF_TARGET) $(KERNEL_TARGET)
+	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_BIN_TARGET) $(KERNEL_TARGET)
+	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_ELF_TARGET) $(KERNEL_TARGET)
+	@ $(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(KERNEL_TARGET)
 	@ echo "${GREEN}Binaries: ${NO_COLOR}Bootloader & kernel binaries successfully compiled in $(BIN_DIR)"
 
 elf_reports:	create_elf_reports_dir
@@ -145,9 +148,3 @@ create_gcc_dir:
 clean_utils:
 	@ rm -rdf $(UTILS_DIR)
 	@ echo "${GREEN}Cleaner: ${NO_COLOR}Utils cleaned"
-
-# boot: binaries
-# 	@ qemu-system-x86_64 -M pc -m 512M -nographic -kernel ./src/bin/bootloader.elf
-#
-# debug: binaries elf_report
-# 	@ qemu-system-x86_64 -machine type=pc-i440fx-3.1 -m 512M -kernel ./src/bin/bootloader.elf --append "console=tty0 console=ttyS0"

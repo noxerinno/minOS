@@ -3,9 +3,13 @@
 section .text
 global _start
 
-BOOT_DRIVE db 0x00
-
 _start:
+    ;mov [BOOT_DRIVE], dl
+    ;mov ah, 0x0E            
+    ;mov al, [BOOT_DRIVE]
+    ;int 0x10
+    ;jmp $
+
     mov ax, 0x07C0          ; Load bootloader load address in AX (0x7C0:0000 = 0x7C00)
     mov ds, ax
     call clear_screen       ; Call the function to clear the screen
@@ -13,38 +17,39 @@ _start:
     mov dl, 25              ; Heigth offset to center the logo (80x25 display)
     mov dh, 9               ; Heigth offset to center the logo (80x25 display)
     call set_cursor         ; Call the functioon to set the cursor at the right offset
-    mov si, logo_line1      ; Load the address of 'my_string' into bx
+    mov si, LOGO_LINE_1     ; Load the address of 'my_string' into bx
     call print_screen       ; Call the function to print the string
     
     mov dh, 10              ; Displaying logo's second line
     call set_cursor
-    mov si, logo_line2
+    mov si, LOGO_LINE_2
     call print_screen
 
     mov dh, 11              ; Displaying logo's third line
     call set_cursor
-    mov si, logo_line3
+    mov si, LOGO_LINE_3
     call print_screen
 
     mov dh, 12              ; Displaying logo's fourth line
     call set_cursor
-    mov si, logo_line4
+    mov si, LOGO_LINE_4
     call print_screen
 
     mov dh, 13              ; Displaying logo's fifth line
     call set_cursor
-    mov si, logo_line5
+    mov si, LOGO_LINE_5
     call print_screen
 
     mov dh, 14              ; Displaying logo's sixth line
     call set_cursor
-    mov si, logo_line6
+    mov si, LOGO_LINE_6
     call print_screen
 
-    call sleep_5_seconds
+    call wait_function
     call clear_screen
-
-    jmp $                   ; Infinite loop to stay in the bootloader
+    mov dl, 0
+    mov dh, 0
+    call set_cursor
 
     ; Preparing swith to protected mode
     ; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
@@ -73,26 +78,29 @@ _start:
     gdt_descriptor:
         dw gdt_end - gdt_start - 1
         dw gdt_start
-    
-    ;;  Kernel loading
-    ;mov bx, 0x1000          ; Load OS source code in memory at address 0x1000
-    ;mov dh, 16              ; Laod 16 disk sectors
-    ;mov dl, [BOOT_DRIVE]    ; Load from booting disk
-    ;mov ah, 0x02            ; BIOS function to load disk
-    ;mov al, dh              ; Provide the number of sector to load to the BIOS function
-    ;mov cl, 0x02            ; Read from sector 2,...
-    ;mov ch, 0x00            ; ...from cylinder 0...
-    ;mov dh, 0x00            ; ...and from head 0
-    ;int 0x13                ; Call to the BIOS interrupt to pass kernel's main func
-    
+
+    ; Kernel loading
+    ;BOOT_DRIVE db 0x00
+
+    mov bx, 0x1000          ; Load OS source code in memory at address 0x1000
+    mov dh, 16              ; Load 16 disk sectors
+    mov dl, [BOOT_DRIVE]    ; Load from booting disk
+    mov ah, 0x02            ; BIOS function to load disk
+    mov al, dh              ; Provide the number of sector to load to the BIOS function
+    mov cl, 0x02            ; Read from sector 2,...
+    mov ch, 0x00            ; ...from cylinder 0...
+    mov dh, 0x00            ; ...and from head 0
+    int 0x13                ; Call to the BIOS interrupt to pass kernel's main func
+
     cli                     ; Disable BIOS interrupts
     lgdt[gdt_descriptor]    ; Load the GDT
     
     mov eax, cr0            ; Load control register 0 (CR0)
-    or al, 1                ; Set the PE (Protection Enable) bit
+    or eax, 1                ; Set the PE (Protection Enable) bit
     mov cr0, eax            ; Write back to CR0 to enable protected mode
-    
-    jmp 0x08:protected_start; Long jump
+
+    ;jmp 0x0:protected_start ; Long jump
+    jmp protected_start     ; Long jump
 
 clear_screen:
     mov ah, 0x06            ; BIOS teletype function (0x06) for clearing the screen  
@@ -122,7 +130,7 @@ print_screen:
     jmp print_screen        ; Repeat for the next character 
 
 ; Qemu doesn't seem to correctly use int 0x15, func 0x86
-;sleep_5_seconds:
+;wait_function:
 ;    mov cx, 0               ; Set CX (high word of the delay) to 0, as our delay is less than 65536 ms
 ;    mov dx, 5000            ; Set DX (low word of the delay) to 5000 milliseconds (5 seconds)
 ;    
@@ -131,7 +139,7 @@ print_screen:
 ;    jmp done
 
 ; Custom 'sleep' function
-sleep_5_seconds:
+wait_function:
     mov cx, 0x4FFF          ; Outer loop counter
 outer_loop:
     mov dx, 0xFFFF          ; Inner loop counter
@@ -147,24 +155,25 @@ inner_loop:
 done:
     ret                     ; Return from the function when the string ends
 
-logo_line1 db " __  __ _        ____   _____", 0  ; Null-terminated string
-logo_line2 db "|  \/  (_)      / __ \ / ____|", 0  
-logo_line3 db "| \  / |_ _ __ | |  | | (___", 0  
-logo_line4 db "| |\/| | | '_ \| |  | |\___ \", 0
-logo_line5 db "| |  | | | | | | |__| |____) |", 0
-logo_line6 db "|_|  |_|_|_| |_|\____/|_____/", 0
-
+LOGO_LINE_1 db " __  __ _        ____   _____", 0  ; Null-terminated string
+LOGO_LINE_2 db "|  \/  (_)      / __ \ / ____|", 0  
+LOGO_LINE_3 db "| \  / |_ _ __ | |  | | (___", 0  
+LOGO_LINE_4 db "| |\/| | | '_ \| |  | |\___ \", 0
+LOGO_LINE_5 db "| |  | | | | | | |__| |____) |", 0
+LOGO_LINE_6 db "|_|  |_|_|_| |_|\____/|_____/", 0
 
 protected_start:
-    ;mov ax, 0x10            ; Selecting data segments
-    ;mov ds, ax              ; Loading data segments
-    ;mov es, ax
-    ;mov fs, ax
-    ;mov gs, ax
-    ;mov ss, ax              ; Loading stack data
+    mov ax, 0x10            ; Selecting data segments
+    mov ds, ax              ; Loading data segments
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax              ; Loading stack data
 
-    jmp 0x08:0x1000         ; Long jump to kernel
-
-
+    jmp 0x0:0x1000         ; Long jump to kernel
+    ;jmp 0x1000             ; Long jump to kernel
+    ;jmp 0x7e00             ; Long jump to kernel
+  
+BOOT_DRIVE db 0x00
 times 510-($-$$) db 0       ; Fill empty space with '0'
 bootSignature dw 0xAA55     ; Write boot signature at the end of the boot sector

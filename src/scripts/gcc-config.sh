@@ -1,7 +1,7 @@
 #!/bin/sh
 
-CROSS_PREFIX=/opt/cross/i686-elf
-CROSS_TARGET=i686-elf
+CROSS_TARGET=$1
+CROSS_PREFIX=/opt/cross/${CROSS_TARGET}
 
 ../gcc-13.2.0/configure --target=${CROSS_TARGET} --prefix="${CROSS_PREFIX}" --disable-nls --enable-languages=c,c++ --without-headers
 make all-gcc

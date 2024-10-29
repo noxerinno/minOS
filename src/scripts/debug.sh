@@ -1,7 +1,7 @@
 #!/bin/sh
 
 touch debug.txt
-echo "Makefile :\n" >> debug.txt
+echo "Makefile :\n" > debug.txt
 cat Makefile >> debug.txt
 echo "\n\nbootloader.asm :\n" >> debug.txt
 cat ./src/bootloader.asm >> debug.txt
