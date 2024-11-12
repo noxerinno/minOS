@@ -1,15 +1,9 @@
 [BITS 16]
 
-section .text
+section .bootloader
 global _start
 
 _start:
-    ;mov [BOOT_DRIVE], dl
-    ;mov ah, 0x0E            
-    ;mov al, [BOOT_DRIVE]
-    ;int 0x10
-    ;jmp $
-
     mov ax, 0x07C0          ; Load bootloader load address in AX (0x7C0:0000 = 0x7C00)
     mov ds, ax
     call clear_screen       ; Call the function to clear the screen
@@ -80,8 +74,6 @@ _start:
         dw gdt_start
 
     ; Kernel loading
-    ;BOOT_DRIVE db 0x00
-
     mov bx, 0x1000          ; Load OS source code in memory at address 0x1000
     mov dh, 16              ; Load 16 disk sectors
     mov dl, [BOOT_DRIVE]    ; Load from booting disk
@@ -170,10 +162,11 @@ protected_start:
     mov gs, ax
     mov ss, ax              ; Loading stack data
 
-    jmp 0x0:0x1000         ; Long jump to kernel
-    ;jmp 0x1000             ; Long jump to kernel
+    ;jmp 0x0:0x1000         ; Long jump to kernel
+    jmp 0x1000             ; Long jump to kernel
     ;jmp 0x7e00             ; Long jump to kernel
-  
+
+
 BOOT_DRIVE db 0x00
 times 510-($-$$) db 0       ; Fill empty space with '0'
 bootSignature dw 0xAA55     ; Write boot signature at the end of the boot sector

@@ -25,7 +25,11 @@ KERNEL_TARGET = $(BIN_DIR)/kernel.elf
 
 LD = $(CROSS_PREFIX)/bin/i686-elf-ld
 LINKER = $(SRC_DIR)/linker.ld
+
+OBJ_COPY = $(CROSS_PREFIX)/bin/i686-elf-objcopy
+
 OS_ELF_TARGET = $(BIN_DIR)/minOS.elf
+OS_BIN_TARGET = $(BIN_DIR)/minOS.bin
 OS_DISK_TARGET = $(DISK_IMAGE_DIR)/minOS.img
 
 # Defining prompt colors & utils 
@@ -40,24 +44,26 @@ boot: disk_image
 	@ #qemu-system-x86_64 -machine type=pc-i440fx-3.1 -m 512M -drive format=raw,file=$(BOOTLOADER_BIN_TARGET)
 	@ #qemu-system-x86_64 -machine type=pc-i440fx-3.1 -m 512M -drive format=raw,file=$(OS_ELF_TARGET)
 	@ #qemu-system-x86_64 -drive format=raw,file=$(OS_DISK_TARGET)
-	@ qemu-system-i386 -drive format=raw,file=$(OS_DISK_TARGET) 
+	@ qemu-system-i386 -drive format=raw,file=$(OS_DISK_TARGET)
+	@ #qemu-system-i386 -kernel $(OS_ELF_TARGET)
 
-debug: boot elf_reports
+debug: boot reports
 	@ chmod u+x $(DEBUG_SCRIPT)
 	@ $(DEBUG_SCRIPT)
 
-# disk_image: binaries create_disk_image_dir
-# 	@ dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880
-# 	@ dd if=$(OS_ELF_TARGET) of=$(OS_DISK_TARGET) conv=notrunc
-# 	@ echo "${GREEN}Disk image: ${NO_COLOR}Disk image successfully created at $(OS_DISK_TARGET)"
-
 disk_image: binaries create_disk_image_dir
-	 dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880 $(NO_PROMPT)
-	 #parted ./src/image/minOS.img --script -- unit s mklabel msdos
-	 #parted ./src/image/minOS.img --script -- unit s mkpart primary 2048 2879
-	 dd if=$(BOOTLOADER_BIN_TARGET) of=$(OS_DISK_TARGET) conv=notrunc $(NO_PROMPT)
-	 dd if=$(OS_ELF_TARGET) of=$(OS_DISK_TARGET) bs=512 seek=1 conv=notrunc $(NO_PROMPT)
+	@ dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880
+	@ dd if=$(OS_ELF_TARGET) of=$(OS_DISK_TARGET) conv=notrunc
+	@ #dd if=$(OS_BIN_TARGET) of=$(OS_DISK_TARGET) conv=notrunc
 	@ echo "${GREEN}Disk image: ${NO_COLOR}Disk image successfully created at $(OS_DISK_TARGET)"
+
+# disk_image: binaries create_disk_image_dir
+# 	 dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880 $(NO_PROMPT)
+# 	 #parted ./src/image/minOS.img --script -- unit s mklabel msdos
+# 	 #parted ./src/image/minOS.img --script -- unit s mkpart primary 2048 2879
+# 	 dd if=$(BOOTLOADER_BIN_TARGET) of=$(OS_DISK_TARGET) conv=notrunc $(NO_PROMPT)
+# 	 dd if=$(OS_ELF_TARGET) of=$(OS_DISK_TARGET) bs=512 seek=1 conv=notrunc $(NO_PROMPT)
+# 	@ echo "${GREEN}Disk image: ${NO_COLOR}Disk image successfully created at $(OS_DISK_TARGET)"
 
 binaries: clean_bin create_bin_dir
 	@ if [ ! -d $(CROSS_PREFIX) ]; then \
@@ -69,14 +75,16 @@ binaries: clean_bin create_bin_dir
 	@ nasm -f elf32 -o $(BOOTLOADER_ELF_TARGET) $(BOOTLOADER_SRC)
 	@ $(CC) $(CFLAGS) -o $(KERNEL_TARGET) -c $(KERNEL_SRC)
 	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_BIN_TARGET) $(KERNEL_TARGET)
-	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_ELF_TARGET) $(KERNEL_TARGET)
-	@ $(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(KERNEL_TARGET)
+	@ $(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_ELF_TARGET) $(KERNEL_TARGET)
+	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(KERNEL_TARGET)
+	@ $(OBJ_COPY) -O binary $(OS_ELF_TARGET) $(OS_BIN_TARGET)
 	@ echo "${GREEN}Binaries: ${NO_COLOR}Bootloader & kernel binaries successfully compiled in $(BIN_DIR)"
 
-elf_reports:	create_elf_reports_dir
+reports:	create_elf_reports_dir
 	@ readelf -a $(BOOTLOADER_ELF_TARGET) > $(REPORTS_DIR)/bootloader_bin_report.txt 
 	@ readelf -a $(KERNEL_TARGET) > $(REPORTS_DIR)/kernel_elf_report.txt
-	@ readelf -a $(OS_ELF_TARGET) > $(REPORTS_DIR)/os_elf_report.txt 
+	@ readelf -a $(OS_ELF_TARGET) > $(REPORTS_DIR)/os_elf_report.txt
+	@ hexdump -C $(OS_DISK_TARGET) > $(REPORTS_DIR)/disk_image.hex
 	@ echo "${GREEN}Reports: ${NO_COLOR}Reports created"
 
 create_bin_dir:
