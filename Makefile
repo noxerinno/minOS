@@ -18,12 +18,15 @@ BOOTLOADER_SRC = $(SRC_DIR)/bootloader.asm
 BOOTLOADER_BIN_TARGET = $(BIN_DIR)/bootloader.bin
 BOOTLOADER_ELF_TARGET = $(BIN_DIR)/bootloader.elf
 
-CC = $(CROSS_PREFIX)/bin/i686-elf-gcc
-CFLAGS = -Wall -g
+#CC = $(CROSS_PREFIX)/bin/i686-elf-gcc
+#CFLAGS = -Wall -g
+CC = gcc
+CFLAGS = -m32 -fno-pie -Wall -ffreestanding --no-builtin
 KERNEL_SRC = $(SRC_DIR)/kernel.c
 KERNEL_TARGET = $(BIN_DIR)/kernel.elf
 
-LD = $(CROSS_PREFIX)/bin/i686-elf-ld
+#LD = $(CROSS_PREFIX)/bin/i686-elf-ld
+LD = ld
 LINKER = $(SRC_DIR)/linker.ld
 
 OBJ_COPY = $(CROSS_PREFIX)/bin/i686-elf-objcopy
@@ -52,7 +55,7 @@ debug: boot reports
 	@ $(DEBUG_SCRIPT)
 
 disk_image: binaries create_disk_image_dir
-	@ dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880
+	@ dd if=/dev/zero of=$(OS_DISK_TARGET) bs=1K count=2880
 	@ dd if=$(OS_ELF_TARGET) of=$(OS_DISK_TARGET) conv=notrunc
 	@ #dd if=$(OS_BIN_TARGET) of=$(OS_DISK_TARGET) conv=notrunc
 	@ echo "${GREEN}Disk image: ${NO_COLOR}Disk image successfully created at $(OS_DISK_TARGET)"
@@ -71,12 +74,13 @@ binaries: clean_bin create_bin_dir
 		exit 1; \
 	fi
 
-	@ nasm -f bin -o $(BOOTLOADER_BIN_TARGET) $(BOOTLOADER_SRC)
+	@ #nasm -f bin -o $(BOOTLOADER_BIN_TARGET) $(BOOTLOADER_SRC)
 	@ nasm -f elf32 -o $(BOOTLOADER_ELF_TARGET) $(BOOTLOADER_SRC)
 	@ $(CC) $(CFLAGS) -o $(KERNEL_TARGET) -c $(KERNEL_SRC)
 	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_BIN_TARGET) $(KERNEL_TARGET)
-	@ $(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_ELF_TARGET) $(KERNEL_TARGET)
-	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(KERNEL_TARGET)
+	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_ELF_TARGET) $(KERNEL_TARGET)
+	@ #$(LD) -T $(LINKER) -melf_i386 -o $(OS_ELF_TARGET) $(BOOTLOADER_BIN_TARGET) $(KERNEL_TARGET)
+	@ $(LD) -T $(LINKER) -melf_i386 -o $(OS_ELF_TARGET) $(BOOTLOADER_ELF_TARGET) $(KERNEL_TARGET)
 	@ $(OBJ_COPY) -O binary $(OS_ELF_TARGET) $(OS_BIN_TARGET)
 	@ echo "${GREEN}Binaries: ${NO_COLOR}Bootloader & kernel binaries successfully compiled in $(BIN_DIR)"
 

@@ -1,32 +1,35 @@
+ENTRY(_core)
 OUTPUT_FORMAT(elf32-i386)
-ENTRY(_start)
 
 SECTIONS
 {
-    . = 0x7C00;                 /*BIOS' MBR load adress for the bootloader*/
-    .bootloader :
+    . = 0x7C00;                  /* bootloader.asm starts at 0x7C00*/
+    .bootloader : AT(0x7C00) SUBALIGN(4)
     {
-        *(.bootloader)          /* Bootloader code section */
+        src/bin/bootloader.elf(.text)
+        src/bin/bootloader.elf(.*) 
+    }
+ 
+    . = 0x8000;                /* core.c starts at 0x8000*/
+    ._core : SUBALIGN(4)
+    {
+        *(.text*)
+        *(.rodata*)
+        *(.data*)
     }
 
-    . = 0x1000; /* Kernel will be load at address 0x1000 */
-    .text :
-    {
-        *(.text)                /* Kernel code */
+    .bss : SUBALIGN(4) {
+        __bss_start = .;
+        *(COMMON);
+        *(.bss*);
     }
+    . = ALIGN(4);              /* Round BSS up to 4 byte boundary */
+    __bss_end = .;
 
-    .rodata :
-    {
-        *(.rodata)              /* Read only data (const) */
-    }
+    kernel_sectors = (SIZEOF(._core) + 511) / 512;
 
-    .data :
-    {
-        *(.data)              /* Initialized data */
-    }
-
-    .bss :
-    {
-        *(.bss)               /* Uninitialized data */
+    /DISCARD/ : {
+        *(.eh_frame)
+        *(.comment)
     }
 }

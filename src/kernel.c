@@ -1,4 +1,4 @@
-int main() {
+int _core() {
     const char *message = "Hello from my kernel!";
     char *vidmem = (char *)0xB8000; // Video memory address
 

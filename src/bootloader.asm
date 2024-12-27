@@ -1,9 +1,9 @@
 [BITS 16]
 
 section .bootloader
-global _start
+;global _start
 
-_start:
+bootloader:
     mov ax, 0x07C0          ; Load bootloader load address in AX (0x7C0:0000 = 0x7C00)
     mov ds, ax
     call clear_screen       ; Call the function to clear the screen
@@ -48,9 +48,10 @@ _start:
     ; Preparing swith to protected mode
     ; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
     gdt_start:              ; Required null descriptor
-        dw 0x0
-        dw 0x0
-    
+        ;dw 0x0
+        ;dw 0x0
+        dq 0x0
+
     gdt_data:               ; Data semgment
         dw 0xffff           ; Span over whole available space
         dw 0x0
@@ -71,13 +72,23 @@ _start:
     
     gdt_descriptor:
         dw gdt_end - gdt_start - 1
-        dw gdt_start
+        ;dw gdt_start
+        dd gdt_start
+
+    code_seg equ gdt_code - gdt_start
+    data_seg equ gdt_data - gdt_start
 
     ; Kernel loading
-    mov bx, 0x1000          ; Load OS source code in memory at address 0x1000
-    mov dh, 16              ; Load 16 disk sectors
-    mov dl, [BOOT_DRIVE]    ; Load from booting disk
+    mov ah, 0               ; reset drive function
+    int 0x13                ; interrupt call to reset drive
+
+    xor ax, ax
+    mov es, ax
+    mov bx, 0x8000          ; Load OS source code in memory at address 0x8000
+    ;mov dl, [BOOT_DRIVE]    ; Load from booting disk
+    
     mov ah, 0x02            ; BIOS function to load disk
+    mov dh, 16              ; Load 16 disk sectors
     mov al, dh              ; Provide the number of sector to load to the BIOS function
     mov cl, 0x02            ; Read from sector 2,...
     mov ch, 0x00            ; ...from cylinder 0...
@@ -92,7 +103,8 @@ _start:
     mov cr0, eax            ; Write back to CR0 to enable protected mode
 
     ;jmp 0x0:protected_start ; Long jump
-    jmp protected_start     ; Long jump
+    ;jmp protected_start     ; Long jump
+    jmp code_seg:protected_start     ; Long jump
 
 clear_screen:
     mov ah, 0x06            ; BIOS teletype function (0x06) for clearing the screen  
@@ -154,6 +166,7 @@ LOGO_LINE_4 db "| |\/| | | '_ \| |  | |\___ \", 0
 LOGO_LINE_5 db "| |  | | | | | | |__| |____) |", 0
 LOGO_LINE_6 db "|_|  |_|_|_| |_|\____/|_____/", 0
 
+[BITS 32]
 protected_start:
     mov ax, 0x10            ; Selecting data segments
     mov ds, ax              ; Loading data segments
@@ -162,8 +175,15 @@ protected_start:
     mov gs, ax
     mov ss, ax              ; Loading stack data
 
+    mov ebp, 0x90000
+    mov esp, ebp
+
+    ;[EXTERN _core]
+    ;call _core
+    ;hlt
+
     ;jmp 0x0:0x1000         ; Long jump to kernel
-    jmp 0x1000             ; Long jump to kernel
+    ;jmp 0x1000             ; Long jump to kernel
     ;jmp 0x7e00             ; Long jump to kernel
 
 
