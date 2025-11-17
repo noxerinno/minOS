@@ -80,9 +80,10 @@ _start:
         dw gdt_start
 
     ; Kernel loading
-    ;BOOT_DRIVE db 0x00
-
+    mov ax, 0x0000
+    mov es, ax
     mov bx, 0x1000          ; Load OS source code in memory at address 0x1000
+    
     mov dh, 16              ; Load 16 disk sectors
     mov dl, [BOOT_DRIVE]    ; Load from booting disk
     mov ah, 0x02            ; BIOS function to load disk
@@ -96,11 +97,12 @@ _start:
     lgdt[gdt_descriptor]    ; Load the GDT
     
     mov eax, cr0            ; Load control register 0 (CR0)
-    or eax, 1                ; Set the PE (Protection Enable) bit
+    or eax, 1               ; Set the PE (Protection Enable) bit
     mov cr0, eax            ; Write back to CR0 to enable protected mode
 
-    ;jmp 0x0:protected_start ; Long jump
-    jmp protected_start     ; Long jump
+    jmp 0x08:protected_start ; Long jump
+    ; jmp protected_start     ; Long jump
+    ; jmp 0x08:0x1000         ; Long jump
 
 clear_screen:
     mov ah, 0x06            ; BIOS teletype function (0x06) for clearing the screen  
@@ -162,6 +164,7 @@ LOGO_LINE_4 db "| |\/| | | '_ \| |  | |\___ \", 0
 LOGO_LINE_5 db "| |  | | | | | | |__| |____) |", 0
 LOGO_LINE_6 db "|_|  |_|_|_| |_|\____/|_____/", 0
 
+[BITS 32]
 protected_start:
     mov ax, 0x10            ; Selecting data segments
     mov ds, ax              ; Loading data segments
@@ -170,8 +173,9 @@ protected_start:
     mov gs, ax
     mov ss, ax              ; Loading stack data
 
-    jmp 0x0:0x1000         ; Long jump to kernel
-    ;jmp 0x1000             ; Long jump to kernel
+    ; jmp 0x1000             ; Long jump to kernel
+    mov esp, 0x9FC00      ; initialisation du stack (par ex)
+    jmp 0x08:0x1000         ; Long jump to kernel
     ;jmp 0x7e00             ; Long jump to kernel
   
 BOOT_DRIVE db 0x00

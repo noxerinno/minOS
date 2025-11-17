@@ -21,7 +21,8 @@ BOOTLOADER_ELF_TARGET = $(BIN_DIR)/bootloader.elf
 CC = $(CROSS_PREFIX)/bin/i686-elf-gcc
 CFLAGS = -Wall -g
 KERNEL_SRC = $(SRC_DIR)/kernel.c
-KERNEL_TARGET = $(BIN_DIR)/kernel.elf
+KERNEL_OBJECT_TARGET = $(BIN_DIR)/kernel.o
+KERNEL_BIN_TARGET = $(BIN_DIR)/kernel.bin
 
 LD = $(CROSS_PREFIX)/bin/i686-elf-ld
 LINKER = $(SRC_DIR)/linker.ld
@@ -46,17 +47,10 @@ debug: boot elf_reports
 	@ chmod u+x $(DEBUG_SCRIPT)
 	@ $(DEBUG_SCRIPT)
 
-# disk_image: binaries create_disk_image_dir
-# 	@ dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880
-# 	@ dd if=$(OS_ELF_TARGET) of=$(OS_DISK_TARGET) conv=notrunc
-# 	@ echo "${GREEN}Disk image: ${NO_COLOR}Disk image successfully created at $(OS_DISK_TARGET)"
-
-disk_image: binaries create_disk_image_dir
-	 dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880 $(NO_PROMPT)
-	 #parted ./src/image/minOS.img --script -- unit s mklabel msdos
-	 #parted ./src/image/minOS.img --script -- unit s mkpart primary 2048 2879
-	 dd if=$(BOOTLOADER_BIN_TARGET) of=$(OS_DISK_TARGET) conv=notrunc $(NO_PROMPT)
-	 dd if=$(OS_ELF_TARGET) of=$(OS_DISK_TARGET) bs=512 seek=1 conv=notrunc $(NO_PROMPT)
+disk_image: binaries clean_disk_images create_disk_image_dir
+	@ dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880 $(NO_PROMPT)			# 2880 in the number of sectors of a 3,5" floppy disk
+	@ dd if=$(BOOTLOADER_BIN_TARGET) of=$(OS_DISK_TARGET) conv=notrunc $(NO_PROMPT)
+	@ dd if=$(KERNEL_BIN_TARGET) of=$(OS_DISK_TARGET) bs=512 seek=1 conv=notrunc $(NO_PROMPT)
 	@ echo "${GREEN}Disk image: ${NO_COLOR}Disk image successfully created at $(OS_DISK_TARGET)"
 
 binaries: clean_bin create_bin_dir
@@ -66,16 +60,13 @@ binaries: clean_bin create_bin_dir
 	fi
 
 	@ nasm -f bin -o $(BOOTLOADER_BIN_TARGET) $(BOOTLOADER_SRC)
-	@ nasm -f elf32 -o $(BOOTLOADER_ELF_TARGET) $(BOOTLOADER_SRC)
-	@ $(CC) $(CFLAGS) -o $(KERNEL_TARGET) -c $(KERNEL_SRC)
-	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_BIN_TARGET) $(KERNEL_TARGET)
-	@ #$(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(BOOTLOADER_ELF_TARGET) $(KERNEL_TARGET)
-	@ $(LD) -T $(LINKER) -o $(OS_ELF_TARGET) $(KERNEL_TARGET)
+	@ $(CC) $(CFLAGS) -o $(KERNEL_OBJECT_TARGET) -c $(KERNEL_SRC)
+	@ $(LD) -T $(LINKER) -o $(KERNEL_BIN_TARGET) $(KERNEL_OBJECT_TARGET)
 	@ echo "${GREEN}Binaries: ${NO_COLOR}Bootloader & kernel binaries successfully compiled in $(BIN_DIR)"
 
 elf_reports:	create_elf_reports_dir
 	@ readelf -a $(BOOTLOADER_ELF_TARGET) > $(REPORTS_DIR)/bootloader_bin_report.txt 
-	@ readelf -a $(KERNEL_TARGET) > $(REPORTS_DIR)/kernel_elf_report.txt
+	@ readelf -a $(KERNEL_BIN_TARGET) > $(REPORTS_DIR)/kernel_elf_report.txt
 	@ readelf -a $(OS_ELF_TARGET) > $(REPORTS_DIR)/os_elf_report.txt 
 	@ echo "${GREEN}Reports: ${NO_COLOR}Reports created"
 
@@ -91,7 +82,6 @@ create_disk_image_dir:
 		echo "${GREEN}Binaries: ${NO_COLOR}Binaries directory created"; \
 	fi
 
-
 create_elf_reports_dir:
 	@ if [ ! -d $(REPORTS_DIR) ]; then \
 		mkdir -p $(REPORTS_DIR); \
@@ -101,6 +91,10 @@ create_elf_reports_dir:
 clean_bin:
 	@ rm -rdf $(BIN_DIR)/*
 	@ echo "${GREEN}Cleaner: ${NO_COLOR}Binaries cleaned"
+
+clean_disk_images:
+	@ rm -rdf $(DISK_IMAGE_DIR)/*
+	@ echo "${GREEN}Cleaner: ${NO_COLOR}Disk images cleaned"
 
 mr_proper:
 	@ rm -rdf $(BIN_DIR)
@@ -123,7 +117,7 @@ cross-compiler: create_binutils_dir create_gcc_dir
 		wget https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.gz -P $(UTILS_DIR) $(NO_PROMPT); \
 		tar -xzf $(UTILS_DIR)/gcc-13.2.0.tar.gz -C $(UTILS_DIR) $(NO_PROMPT); \
 	fi
-	@ echo "${GREEN}Cross compiler: ${NO_COLOR}Sources downloads"
+	@ echo "${GREEN}Cross compiler: ${NO_COLOR}Sources downloaded"
 	
 	@ cp $(SCRIPT_DIR)/binutils-config.sh $(BUILD_BINUTILS_DIR)
 	@ chmod u+x $(BUILD_BINUTILS_DIR)/binutils-config.sh

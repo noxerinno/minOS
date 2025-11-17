@@ -1,8 +1,23 @@
-OUTPUT_FORMAT(elf32-i386)
+OUTPUT_FORMAT(binary)
+ENTRY(_start)
 
 SECTIONS {
     . = 0x1000;
-    .kernel : {
-        *(.text) *(.rodata) *(.data) *(.bss)
+
+    .text : {
+        *(.text*)
+    }
+
+    .rodata : {
+        *(.rodata*)
+    }
+
+    .data : {
+        *(.data*)
+    }
+
+    .bss : {
+        *(.bss*)
+        *(COMMON)
     }
 }
