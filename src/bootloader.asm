@@ -4,16 +4,12 @@ section .text
 global _start
 
 _start:
-    ;mov [BOOT_DRIVE], dl
-    ;mov ah, 0x0E            
-    ;mov al, [BOOT_DRIVE]
-    ;int 0x10
-    ;jmp $
-
     mov ax, 0x07C0          ; Load bootloader load address in AX (0x7C0:0000 = 0x7C00)
     mov ds, ax
     call clear_screen       ; Call the function to clear the screen
-    
+
+    ; -------------------------
+    ; Print minOS logo
     mov dl, 25              ; Heigth offset to center the logo (80x25 display)
     mov dh, 9               ; Heigth offset to center the logo (80x25 display)
     call set_cursor         ; Call the functioon to set the cursor at the right offset
@@ -51,12 +47,13 @@ _start:
     mov dh, 0
     call set_cursor
 
-    ; Preparing swith to protected mode
+    ; -------------------------
+    ; GDT definition
     ; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
     gdt_start:              ; Required null descriptor
         dw 0x0
         dw 0x0
-    
+
     gdt_data:               ; Data semgment
         dw 0xffff           ; Span over whole available space
         dw 0x0
@@ -64,7 +61,7 @@ _start:
         db 10010010b        ; Readable, writable but not executable
         db 11001111b
         db 0x0
-    
+
     gdt_code:               ; Code segment
         dw 0xffff           ; Span over whole available space
         dw 0x0
@@ -72,13 +69,14 @@ _start:
         db 10011010b        ; Readable, executable but not writable
         db 11001111b
         db 0x0
-    
+
     gdt_end:    
-    
+
     gdt_descriptor:
         dw gdt_end - gdt_start - 1
-        dw gdt_start
+        dd gdt_start
 
+    ; -------------------------
     ; Kernel loading
     mov ax, 0x0000
     mov es, ax
@@ -88,11 +86,13 @@ _start:
     mov dl, [BOOT_DRIVE]    ; Load from booting disk
     mov ah, 0x02            ; BIOS function to load disk
     mov al, dh              ; Provide the number of sector to load to the BIOS function
-    mov cl, 0x02            ; Read from sector 2,...
+    mov cl, 0x01            ; Read from sector 2,...
     mov ch, 0x00            ; ...from cylinder 0...
     mov dh, 0x00            ; ...and from head 0
     int 0x13                ; Call to the BIOS interrupt to pass kernel's main func
 
+    ; -------------------------
+    ; Setup GDT & switch to protected mode
     cli                     ; Disable BIOS interrupts
     lgdt[gdt_descriptor]    ; Load the GDT
     
@@ -104,6 +104,9 @@ _start:
     ; jmp protected_start     ; Long jump
     ; jmp 0x08:0x1000         ; Long jump
 
+
+; ========================
+; Functions
 clear_screen:
     mov ah, 0x06            ; BIOS teletype function (0x06) for clearing the screen  
     mov al, 0x00            ; Clear whole screen 
@@ -157,12 +160,16 @@ inner_loop:
 done:
     ret                     ; Return from the function when the string ends
 
+
+; ========================
+; Logo
 LOGO_LINE_1 db " __  __ _        ____   _____", 0  ; Null-terminated string
 LOGO_LINE_2 db "|  \/  (_)      / __ \ / ____|", 0  
 LOGO_LINE_3 db "| \  / |_ _ __ | |  | | (___", 0  
 LOGO_LINE_4 db "| |\/| | | '_ \| |  | |\___ \", 0
 LOGO_LINE_5 db "| |  | | | | | | |__| |____) |", 0
 LOGO_LINE_6 db "|_|  |_|_|_| |_|\____/|_____/", 0
+
 
 [BITS 32]
 protected_start:
@@ -172,10 +179,16 @@ protected_start:
     mov fs, ax
     mov gs, ax
     mov ss, ax              ; Loading stack data
+    mov esp, 0x9FC00        ; Stack initialisation
 
+    mov byte [0xB8000], 'B'
+    mov byte [0xB8001], 0x07
+
+.loop:
+    jmp .loop
+
+    ; jmp 0x08:0x1000         ; Long jump to kernel
     ; jmp 0x1000             ; Long jump to kernel
-    mov esp, 0x9FC00      ; initialisation du stack (par ex)
-    jmp 0x08:0x1000         ; Long jump to kernel
     ;jmp 0x7e00             ; Long jump to kernel
   
 BOOT_DRIVE db 0x00

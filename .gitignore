@@ -57,3 +57,4 @@ dkms.conf
 src/bin/reports/
 src/image/
 utils/
+debug.txt

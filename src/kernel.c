@@ -1,3 +1,4 @@
+void _start() __attribute__((naked));
 void _start() {
     const char *message = "Hello from my kernel!";
     char *vidmem = (char *)0xB8000;     // Video memory address

@@ -19,7 +19,7 @@ BOOTLOADER_BIN_TARGET = $(BIN_DIR)/bootloader.bin
 BOOTLOADER_ELF_TARGET = $(BIN_DIR)/bootloader.elf
 
 CC = $(CROSS_PREFIX)/bin/i686-elf-gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -ffreestanding -m32 -nostdlib
 KERNEL_SRC = $(SRC_DIR)/kernel.c
 KERNEL_OBJECT_TARGET = $(BIN_DIR)/kernel.o
 KERNEL_BIN_TARGET = $(BIN_DIR)/kernel.bin
@@ -39,11 +39,9 @@ export PATH := "${PATH}:$(CROSS_PREFIX)/bin"
  	
 boot: disk_image
 	@ #qemu-system-x86_64 -machine type=pc-i440fx-3.1 -m 512M -drive format=raw,file=$(BOOTLOADER_BIN_TARGET)
-	@ #qemu-system-x86_64 -machine type=pc-i440fx-3.1 -m 512M -drive format=raw,file=$(OS_ELF_TARGET)
-	@ #qemu-system-x86_64 -drive format=raw,file=$(OS_DISK_TARGET)
 	@ qemu-system-i386 -drive format=raw,file=$(OS_DISK_TARGET) 
 
-debug: boot elf_reports
+debug: boot
 	@ chmod u+x $(DEBUG_SCRIPT)
 	@ $(DEBUG_SCRIPT)
 
@@ -64,11 +62,11 @@ binaries: clean_bin create_bin_dir
 	@ $(LD) -T $(LINKER) -o $(KERNEL_BIN_TARGET) $(KERNEL_OBJECT_TARGET)
 	@ echo "${GREEN}Binaries: ${NO_COLOR}Bootloader & kernel binaries successfully compiled in $(BIN_DIR)"
 
-elf_reports:	create_elf_reports_dir
-	@ readelf -a $(BOOTLOADER_ELF_TARGET) > $(REPORTS_DIR)/bootloader_bin_report.txt 
-	@ readelf -a $(KERNEL_BIN_TARGET) > $(REPORTS_DIR)/kernel_elf_report.txt
-	@ readelf -a $(OS_ELF_TARGET) > $(REPORTS_DIR)/os_elf_report.txt 
-	@ echo "${GREEN}Reports: ${NO_COLOR}Reports created"
+# elf_reports: create_elf_reports_dir
+# 	@ readelf -a $(BOOTLOADER_BIN_TARGET) > $(REPORTS_DIR)/bootloader_bin_report.txt 
+# 	@ readelf -a $(KERNEL_BIN_TARGET) > $(REPORTS_DIR)/kernel_elf_report.txt
+# 	@ readelf -a $(OS_ELF_TARGET) > $(REPORTS_DIR)/os_elf_report.txt 
+# 	@ echo "${GREEN}Reports: ${NO_COLOR}Reports created"
 
 create_bin_dir:
 	@ if [ ! -d $(BIN_DIR) ]; then \
