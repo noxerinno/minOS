@@ -100,8 +100,8 @@ _start:
     or eax, 1               ; Set the PE (Protection Enable) bit
     mov cr0, eax            ; Write back to CR0 to enable protected mode
 
-    ; jmp 0x08:protected_start ; Long jump
-    jmp protected_start     ; Long jump
+    jmp 0x08:protected_start ; Long jump
+    ; jmp protected_start     ; Long jump
     ; jmp 0x08:0x1000         ; Long jump
 
 
@@ -132,7 +132,7 @@ gdt_end:
 
 gdt_descriptor:
     dw gdt_end - gdt_start - 1
-    dw gdt_start
+    dd gdt_start
 
 ; gdt_start:
 ;     dq 0x0000000000000000     ; Null descriptor
