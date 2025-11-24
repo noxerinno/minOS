@@ -47,34 +47,34 @@ _start:
     mov dh, 0
     call set_cursor
 
-    ; -------------------------
-    ; GDT definition
-    ; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
-    gdt_start:              ; Required null descriptor
-        dw 0x0
-        dw 0x0
+    ; ; -------------------------
+    ; ; GDT definition
+    ; ; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
+    ; gdt_start:              ; Required null descriptor
+    ;     dw 0x0
+    ;     dw 0x0
 
-    gdt_data:               ; Data semgment
-        dw 0xffff           ; Span over whole available space
-        dw 0x0
-        db 0x0
-        db 10010010b        ; Readable, writable but not executable
-        db 11001111b
-        db 0x0
+    ; gdt_data:               ; Data semgment
+    ;     dw 0xffff           ; Span over whole available space
+    ;     dw 0x0
+    ;     db 0x0
+    ;     db 10010010b        ; Readable, writable but not executable
+    ;     db 11001111b
+    ;     db 0x0
 
-    gdt_code:               ; Code segment
-        dw 0xffff           ; Span over whole available space
-        dw 0x0
-        db 0x0
-        db 10011010b        ; Readable, executable but not writable
-        db 11001111b
-        db 0x0
+    ; gdt_code:               ; Code segment
+    ;     dw 0xffff           ; Span over whole available space
+    ;     dw 0x0
+    ;     db 0x0
+    ;     db 10011010b        ; Readable, executable but not writable
+    ;     db 11001111b
+    ;     db 0x0
 
-    gdt_end:    
+    ; gdt_end:    
 
-    gdt_descriptor:
-        dw gdt_end - gdt_start - 1
-        dd gdt_start
+    ; gdt_descriptor:
+    ;     dw gdt_end - gdt_start - 1
+    ;     dd gdt_start
 
     ; -------------------------
     ; Kernel loading
@@ -100,10 +100,49 @@ _start:
     or eax, 1               ; Set the PE (Protection Enable) bit
     mov cr0, eax            ; Write back to CR0 to enable protected mode
 
-    jmp 0x08:protected_start ; Long jump
-    ; jmp protected_start     ; Long jump
+    ; jmp 0x08:protected_start ; Long jump
+    jmp protected_start     ; Long jump
     ; jmp 0x08:0x1000         ; Long jump
 
+
+; ========================
+; GDT definition
+; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
+gdt_start:              ; Required null descriptor
+    dw 0x0
+    dw 0x0
+
+gdt_data:               ; Data semgment
+    dw 0xffff           ; Span over whole available space
+    dw 0x0
+    db 0x0
+    db 10010010b        ; Readable, writable but not executable
+    db 11001111b
+    db 0x0
+
+gdt_code:               ; Code segment
+    dw 0xffff           ; Span over whole available space
+    dw 0x0
+    db 0x0
+    db 10011010b        ; Readable, executable but not writable
+    db 11001111b
+    db 0x0
+
+gdt_end:    
+
+gdt_descriptor:
+    dw gdt_end - gdt_start - 1
+    dw gdt_start
+
+; gdt_start:
+;     dq 0x0000000000000000     ; Null descriptor
+;     dq 0x00CF92000000FFFF     ; Data segment
+;     dq 0x00CF9A000000FFFF     ; Code segment
+; gdt_end:
+
+; gdt_descriptor:
+;     dw gdt_end - gdt_start - 1
+;     dd gdt_start
 
 ; ========================
 ; Functions

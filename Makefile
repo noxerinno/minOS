@@ -39,6 +39,7 @@ export PATH := "${PATH}:$(CROSS_PREFIX)/bin"
  	
 boot: disk_image
 	@ #qemu-system-x86_64 -machine type=pc-i440fx-3.1 -m 512M -drive format=raw,file=$(BOOTLOADER_BIN_TARGET)
+	@ #qemu-system-i386 -drive format=raw,file=$(BOOTLOADER_BIN_TARGET)
 	@ qemu-system-i386 -drive format=raw,file=$(OS_DISK_TARGET) 
 
 debug: boot
