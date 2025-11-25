@@ -1,14 +1,22 @@
-OUTPUT_FORMAT(elf32-i386)
+OUTPUT_FORMAT(binary)
 ENTRY(_start)
 
 SECTIONS {
-    . = 0x000000;
-    .bootloader : {
+    . = 0x0100000;
+    .text : ALIGN(4096) {
         *(.text)
     }
 
-    . = ALIGN(0x1000);
-    .kernel : {
-        *(.text) *(.rodata) *(.data) *(.bss)
+    .rodata : ALIGN(4096) {
+        *(.rodata)
+    }
+
+    .data : ALIGN(4096) {
+        *(.data)
+    }
+
+    .bss : ALIGN(4096) {
+        *(COMMON)
+        *(.bss)
     }
 }

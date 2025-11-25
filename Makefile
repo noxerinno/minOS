@@ -4,11 +4,11 @@ CROSS_PREFIX=/opt/cross/$(CROSS_TARGET)
 
 # Defining global vars
 SRC_DIR = ./src
-BIN_DIR = $(SRC_DIR)/bin
+BIN_DIR = ./bin
 SCRIPT_DIR = $(SRC_DIR)/scripts
 DEBUG_SCRIPT = $(SCRIPT_DIR)/debug.sh
-REPORTS_DIR = $(SRC_DIR)/bin/reports
-DISK_IMAGE_DIR = $(SRC_DIR)/image
+REPORTS_DIR = $(BIN_DIR)/reports
+BUILD_DIR = ./build
 
 UTILS_DIR = ./utils
 BUILD_BINUTILS_DIR = $(UTILS_DIR)/build-binutils
@@ -27,7 +27,7 @@ KERNEL_BIN_TARGET = $(BIN_DIR)/kernel.bin
 LD = $(CROSS_PREFIX)/bin/i686-elf-ld
 LINKER = $(SRC_DIR)/linker.ld
 OS_ELF_TARGET = $(BIN_DIR)/minOS.elf
-OS_DISK_TARGET = $(DISK_IMAGE_DIR)/minOS.img
+OS_DISK_TARGET = $(BUILD_DIR)/minOS.img
 
 # Defining prompt colors & utils 
 GREEN = \033[0;32m
@@ -39,14 +39,13 @@ export PATH := "${PATH}:$(CROSS_PREFIX)/bin"
  	
 boot: disk_image
 	@ #qemu-system-x86_64 -machine type=pc-i440fx-3.1 -m 512M -drive format=raw,file=$(BOOTLOADER_BIN_TARGET)
-	@ #qemu-system-i386 -drive format=raw,file=$(BOOTLOADER_BIN_TARGET)
-	@ qemu-system-i386 -drive format=raw,file=$(OS_DISK_TARGET) 
+	@ qemu-system-i386 -drive format=raw,file=$(OS_DISK_TARGET)
 
 debug: boot
 	@ chmod u+x $(DEBUG_SCRIPT)
 	@ $(DEBUG_SCRIPT)
 
-disk_image: binaries clean_disk_images create_disk_image_dir
+disk_image: binaries clean_disk_images create_BUILD_DIR
 	@ dd if=/dev/zero of=$(OS_DISK_TARGET) bs=512 count=2880 $(NO_PROMPT)			# 2880 in the number of sectors of a 3,5" floppy disk
 	@ dd if=$(BOOTLOADER_BIN_TARGET) of=$(OS_DISK_TARGET) conv=notrunc $(NO_PROMPT)
 	@ dd if=$(KERNEL_BIN_TARGET) of=$(OS_DISK_TARGET) bs=512 seek=1 conv=notrunc $(NO_PROMPT)
@@ -63,21 +62,15 @@ binaries: clean_bin create_bin_dir
 	@ $(LD) -T $(LINKER) -o $(KERNEL_BIN_TARGET) $(KERNEL_OBJECT_TARGET)
 	@ echo "${GREEN}Binaries: ${NO_COLOR}Bootloader & kernel binaries successfully compiled in $(BIN_DIR)"
 
-# elf_reports: create_elf_reports_dir
-# 	@ readelf -a $(BOOTLOADER_BIN_TARGET) > $(REPORTS_DIR)/bootloader_bin_report.txt 
-# 	@ readelf -a $(KERNEL_BIN_TARGET) > $(REPORTS_DIR)/kernel_elf_report.txt
-# 	@ readelf -a $(OS_ELF_TARGET) > $(REPORTS_DIR)/os_elf_report.txt 
-# 	@ echo "${GREEN}Reports: ${NO_COLOR}Reports created"
-
 create_bin_dir:
 	@ if [ ! -d $(BIN_DIR) ]; then \
 		mkdir $(BIN_DIR); \
 		echo "${GREEN}Binaries: ${NO_COLOR}Binaries directory created"; \
 	fi
 
-create_disk_image_dir:
-	@ if [ ! -d $(DISK_IMAGE_DIR) ]; then \
-		mkdir $(DISK_IMAGE_DIR); \
+create_BUILD_DIR:
+	@ if [ ! -d $(BUILD_DIR) ]; then \
+		mkdir $(BUILD_DIR); \
 		echo "${GREEN}Binaries: ${NO_COLOR}Binaries directory created"; \
 	fi
 
@@ -92,7 +85,7 @@ clean_bin:
 	@ echo "${GREEN}Cleaner: ${NO_COLOR}Binaries cleaned"
 
 clean_disk_images:
-	@ rm -rdf $(DISK_IMAGE_DIR)/*
+	@ rm -rdf $(BUILD_DIR)/*
 	@ echo "${GREEN}Cleaner: ${NO_COLOR}Disk images cleaned"
 
 mr_proper:

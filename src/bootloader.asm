@@ -1,11 +1,19 @@
 [BITS 16]
+[ORG 0x7C00]               ; Origin address for the bootloader
 
-section .text
 global _start
 
+; ========================
+; Global variables
+CODE_OFFSET equ 0x08        ; GDT code offset
+DATA_OFFSET equ 0x10        ; GDT data offset
+BOOT_DRIVE equ 0x00
+KERNEL_LOAD_ADDR equ 0x1000 ; Address where the kernel will be loaded
+
+
+; ========================
+; Main function
 _start:
-    mov ax, 0x07C0          ; Load bootloader load address in AX (0x7C0:0000 = 0x7C00)
-    mov ds, ax
     call clear_screen       ; Call the function to clear the screen
 
     ; -------------------------
@@ -46,47 +54,17 @@ _start:
     mov dl, 0
     mov dh, 0
     call set_cursor
-
-    ; ; -------------------------
-    ; ; GDT definition
-    ; ; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
-    ; gdt_start:              ; Required null descriptor
-    ;     dw 0x0
-    ;     dw 0x0
-
-    ; gdt_data:               ; Data semgment
-    ;     dw 0xffff           ; Span over whole available space
-    ;     dw 0x0
-    ;     db 0x0
-    ;     db 10010010b        ; Readable, writable but not executable
-    ;     db 11001111b
-    ;     db 0x0
-
-    ; gdt_code:               ; Code segment
-    ;     dw 0xffff           ; Span over whole available space
-    ;     dw 0x0
-    ;     db 0x0
-    ;     db 10011010b        ; Readable, executable but not writable
-    ;     db 11001111b
-    ;     db 0x0
-
-    ; gdt_end:    
-
-    ; gdt_descriptor:
-    ;     dw gdt_end - gdt_start - 1
-    ;     dd gdt_start
-
+    
     ; -------------------------
     ; Kernel loading
     mov ax, 0x0000
     mov es, ax
-    mov bx, 0x1000          ; Load OS source code in memory at address 0x1000
+    mov bx, KERNEL_LOAD_ADDR; Load OS source code in memory at address 0x1000
     
-    mov dh, 16              ; Load 16 disk sectors
     mov dl, [BOOT_DRIVE]    ; Load from booting disk
     mov ah, 0x02            ; BIOS function to load disk
-    mov al, dh              ; Provide the number of sector to load to the BIOS function
-    mov cl, 0x01            ; Read from sector 2,...
+    mov al, 16              ; Provide the number of sector to load to the BIOS function
+    mov cl, 0x02            ; Read from sector 2,...
     mov ch, 0x00            ; ...from cylinder 0...
     mov dh, 0x00            ; ...and from head 0
     int 0x13                ; Call to the BIOS interrupt to pass kernel's main func
@@ -97,10 +75,10 @@ _start:
     lgdt[gdt_descriptor]    ; Load the GDT
     
     mov eax, cr0            ; Load control register 0 (CR0)
-    or eax, 1               ; Set the PE (Protection Enable) bit
+    or al, 1                ; Set the PE (Protection Enable) bit
     mov cr0, eax            ; Write back to CR0 to enable protected mode
 
-    jmp 0x08:protected_start ; Long jump
+    jmp CODE_OFFSET:protected_start     ; Long jump
     ; jmp protected_start     ; Long jump
     ; jmp 0x08:0x1000         ; Long jump
 
@@ -109,10 +87,10 @@ _start:
 ; GDT definition
 ; Basic Flat Model (BFM) for the Global Descriptor Table (GDT)
 gdt_start:              ; Required null descriptor
-    dw 0x0
-    dw 0x0
+    dd 0x0
+    dd 0x0
 
-gdt_data:               ; Data semgment
+    ; Data semgment
     dw 0xffff           ; Span over whole available space
     dw 0x0
     db 0x0
@@ -120,7 +98,7 @@ gdt_data:               ; Data semgment
     db 11001111b
     db 0x0
 
-gdt_code:               ; Code segment
+    ; Code segment
     dw 0xffff           ; Span over whole available space
     dw 0x0
     db 0x0
@@ -212,24 +190,28 @@ LOGO_LINE_6 db "|_|  |_|_|_| |_|\____/|_____/", 0
 
 [BITS 32]
 protected_start:
-    mov ax, 0x10            ; Selecting data segments
+    mov ax, DATA_OFFSET     ; Selecting data segments
     mov ds, ax              ; Loading data segments
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax              ; Loading stack data
-    mov esp, 0x9FC00        ; Stack initialisation
+    mov ebp, 0x9FC00        ; Stack initialisation
+    mov esp, esp
+
+    in al, 0x92
+    or al, 2
+    out 0x92, al
 
     mov byte [0xB8000], 'B'
     mov byte [0xB8001], 0x07
 
-.loop:
-    jmp .loop
+
+    jmp $
 
     ; jmp 0x08:0x1000         ; Long jump to kernel
     ; jmp 0x1000             ; Long jump to kernel
     ;jmp 0x7e00             ; Long jump to kernel
   
-BOOT_DRIVE db 0x00
 times 510-($-$$) db 0       ; Fill empty space with '0'
 bootSignature dw 0xAA55     ; Write boot signature at the end of the boot sector
