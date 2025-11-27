@@ -7,7 +7,7 @@ global _start
 ; Global variables
 CODE_OFFSET equ 0x08        ; GDT code offset
 DATA_OFFSET equ 0x10        ; GDT data offset
-BOOT_DRIVE equ 0x00
+BOOT_DRIVE equ 0x80
 KERNEL_LOAD_ADDR equ 0x1000 ; Address where the kernel will be loaded
 
 
@@ -61,7 +61,7 @@ _start:
     mov es, ax
     mov bx, KERNEL_LOAD_ADDR; Load OS source code in memory at address 0x1000
     
-    mov dl, [BOOT_DRIVE]    ; Load from booting disk
+    mov dl, BOOT_DRIVE      ; Load from booting disk
     mov ah, 0x02            ; BIOS function to load disk
     mov al, 16              ; Provide the number of sector to load to the BIOS function
     mov cl, 0x02            ; Read from sector 2,...
@@ -73,6 +73,9 @@ _start:
     ; Setup GDT & switch to protected mode
     cli                     ; Disable BIOS interrupts
     lgdt[gdt_descriptor]    ; Load the GDT
+    in al, 0x92             ; A20 line latch
+    or al, 2
+    out 0x92, al
     
     mov eax, cr0            ; Load control register 0 (CR0)
     or al, 1                ; Set the PE (Protection Enable) bit
@@ -90,19 +93,19 @@ gdt_start:              ; Required null descriptor
     dd 0x0
     dd 0x0
 
-    ; Data semgment
-    dw 0xffff           ; Span over whole available space
-    dw 0x0
-    db 0x0
-    db 10010010b        ; Readable, writable but not executable
-    db 11001111b
-    db 0x0
-
     ; Code segment
     dw 0xffff           ; Span over whole available space
     dw 0x0
     db 0x0
     db 10011010b        ; Readable, executable but not writable
+    db 11001111b
+    db 0x0
+
+    ; Data semgment
+    dw 0xffff           ; Span over whole available space
+    dw 0x0
+    db 0x0
+    db 10010010b        ; Readable, writable but not executable
     db 11001111b
     db 0x0
 
@@ -112,15 +115,6 @@ gdt_descriptor:
     dw gdt_end - gdt_start - 1
     dd gdt_start
 
-; gdt_start:
-;     dq 0x0000000000000000     ; Null descriptor
-;     dq 0x00CF92000000FFFF     ; Data segment
-;     dq 0x00CF9A000000FFFF     ; Code segment
-; gdt_end:
-
-; gdt_descriptor:
-;     dw gdt_end - gdt_start - 1
-;     dd gdt_start
 
 ; ========================
 ; Functions
@@ -197,21 +191,17 @@ protected_start:
     mov gs, ax
     mov ss, ax              ; Loading stack data
     mov ebp, 0x9FC00        ; Stack initialisation
-    mov esp, esp
+    mov esp, ebp
 
-    in al, 0x92
-    or al, 2
-    out 0x92, al
+    ; mov byte [0xB8000], 'B'
+    ; mov byte [0xB8001], 0x07
 
-    mov byte [0xB8000], 'B'
-    mov byte [0xB8001], 0x07
+    ; jmp $
 
+    jmp CODE_OFFSET:0x1000  ; Long jump to kernel
+    ; call _start        ; Call kernel main function
 
-    jmp $
-
-    ; jmp 0x08:0x1000         ; Long jump to kernel
-    ; jmp 0x1000             ; Long jump to kernel
-    ;jmp 0x7e00             ; Long jump to kernel
-  
+; ========================
+; Filler & signature
 times 510-($-$$) db 0       ; Fill empty space with '0'
 bootSignature dw 0xAA55     ; Write boot signature at the end of the boot sector
