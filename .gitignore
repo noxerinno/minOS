@@ -54,6 +54,8 @@ dkms.conf
 
 
 # Custom exclusions
-src/bin/reports/
-src/image/
+bin/
+bin/reports/
+build/
 utils/
+debug.txt
