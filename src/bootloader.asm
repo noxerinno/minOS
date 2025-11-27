@@ -193,13 +193,7 @@ protected_start:
     mov ebp, 0x9FC00        ; Stack initialisation
     mov esp, ebp
 
-    ; mov byte [0xB8000], 'B'
-    ; mov byte [0xB8001], 0x07
-
-    ; jmp $
-
     jmp CODE_OFFSET:0x1000  ; Long jump to kernel
-    ; call _start        ; Call kernel main function
 
 ; ========================
 ; Filler & signature
